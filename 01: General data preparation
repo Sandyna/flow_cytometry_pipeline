@@ -1,0 +1,52 @@
+#This only needs to be done once
+#We were given fcs files and we're going to sort them into corresponding folders
+
+#Define the directories
+source_dir <- c("C:/Users/sanda/Documents/Bioinformatics/full_data_raw/fcs_files/")
+infinity_dir <- c("C:/Users/sanda/Documents/Bioinformatics/full_data_trimmed_InfinityFlow/fcs_files/")
+
+#getting a unique list of sample IDs
+fcs_file_names <- list.files(getwd(), pattern = "\\.fcs")
+fcs_file_names_prefixes <- c()
+for (line in fcs_file_names) {
+	 fcs_file_names_prefixes <- c(fcs_file_names_prefixes, gsub("_.*", "", line))
+}
+fcs_file_names_prefixes <- unique(fcs_file_names_prefixes)
+
+#create folders for each sample
+setwd(infinity_dir)
+for(id in fcs_file_names_prefixes) {
+    dir.create(id)
+}
+
+#Populate the folders
+setwd(source_dir)
+prefixes <- list.dirs(infinity_dir, full.names = FALSE, recursive = FALSE)
+for(name in prefixes){
+	sample_files <- list.files(source_dir, pattern = paste0("^", name))
+	file.copy(sample_files, paste0(infinity_dir, name, "/"))
+}
+
+#Rename all fcs files (replace spaces with _, because spaces in names create chaos)
+#You can use this snippet to remove/replace any other unwanted characters. For example brackets () in names pose a huge problem for R
+for(name in prefixes){
+    setwd(paste0(infinity_dir, name))
+    fcs <- list.files(pattern = ".fcs")
+    file.rename(fcs, gsub("\\s", "_", fcs))}
+
+#Remove blanks (everything that has blank in name)
+for(name in prefixes){
+	setwd(paste0(infinity_dir, name))
+	blanks_to_remove <- list.files(paste0(infinity_dir, name), pattern = ".*Blank.*")
+	print(blanks_to_remove)
+	file.remove(blanks_to_remove)
+}
+
+#Remove well_081 because it's a blank in our case
+for(name in prefixes){
+	setwd(paste0(infinity_dir, name))
+	print(getwd())
+	blanks_to_remove <- list.files(paste0(infinity_dir, name), pattern = ".*G9_Well_081.*")
+	print(blanks_to_remove)
+	file.remove(blanks_to_remove)
+}
