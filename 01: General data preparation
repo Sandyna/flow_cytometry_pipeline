@@ -1,3 +1,20 @@
+#install and invoke dark magic
+if (!require("BiocManager", quietly = TRUE))
+	install.packages("BiocManager")
+BiocManager::install("CATALYST")
+BiocManager::install("diffcyt")
+library(CATALYST)
+library(cowplot)
+library(flowCore)
+library(diffcyt)
+library(scater)
+library(SingleCellExperiment)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("MetaCyto")
+library(MetaCyto)
+
+
 #This only needs to be done once
 #We were given fcs files and we're going to sort them into corresponding folders
 
@@ -50,3 +67,122 @@ for(name in prefixes){
 	print(blanks_to_remove)
 	file.remove(blanks_to_remove)
 }
+
+#Pooling the fcs files by sample ID - only needs to be done when you want to work with less files. 
+#getting a unique list of sample IDs
+fcs_file_names <- list.files(infinity_dir, pattern = "\\.fcs")
+fcs_file_names_prefixes <- c()
+for (line in fcs_file_names) {
+#You might need to edit the gsub function to fit your naming convention
+	 fcs_file_names_prefixes <- c(fcs_file_names_prefixes, gsub("_.*", "", line))
+}
+fcs_file_names_prefixes <- unique(fcs_file_names_prefixes)
+
+#pooling
+for (prefix in fcs_file_names_prefixes){
+    string <- paste("^", prefix, ".*\\.fcs")
+    string <- gsub("\\s", "", string)
+    print(string)
+fcs_files <- list.files(infinity_dir, pattern = string, full.names = TRUE)
+flow_data_list <- lapply(fcs_files, flowCore::read.FCS, truncate_max_range = FALSE)
+print("made flow data list")
+pooled_flow_data <- flowCore::flowSet(flow_data_list)
+new_frame = MetaCyto::set2Frame(pooled_flow_data)
+print("writing now")
+write.FCS(new_frame, gsub("\\s", "", paste(prefix, "_pooled.fcs")))
+}
+
+
+#Reading in fcs files and creating a flow set to work with
+setwd(infinity_dir)
+fcs <- list.files(pattern = ".fcs$")
+fs <- read.flowSet(fcs, transformation = FALSE, truncate_max_range = FALSE)
+#renaming columns to remove spaces and replacing dots with '_'
+new_colnames <- gsub(" ", "", colnames(fs))
+new_colnames <- gsub("\\.", "_", new_colnames)
+colnames(fs) <- new_colnames
+
+#Applying the compensation matrix
+#put your own matrix file here
+matrix_file <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix.csv"
+compensation_matrix_csv <- read.csv(matrix_file)
+compensation_matrix <- as.matrix(compensation_matrix_csv)
+fs_compensated <- compensate(fs, compensation_matrix)
+
+#Data trimming and "zeroing"
+#Sometimes we want to remove data that exceeds a certain threshold. We can do this by trimming with the PeacoQC package.
+#We use the term "zeroing" to describe the practice of setting the measured value to zero if it's under a certain threshold, to correct measurings that are too low to be valid.
+#https://github.com/saeyslab/PeacoQC/blob/master/vignettes/PeacoQC_Vignette.Rmd
+
+BiocManager::install("ComplexHeatmap")
+devtools::install_github("saeyslab/PeacoQC")
+library(PeacoQC)
+
+#This is an example of how we used it
+#pick channels which we want to target
+channels <- c(8:13, 18, 20, 21, 23:38, 40:44, 46)
+#set thresholds for specific channels/markers
+channel_specifications <- list("TCRVD2_IGG"=c(-6000, 1e6),
+"CD69"=c(-5000, 1e6),
+"CD38"=c(-2000, 1e6),
+"CD127"=c(-4000, 1e6),
+"CD71"=c(-4500, 1e6),
+"CD73"=c(-3000, 1e6),
+"CD56"=c(-3000, 1e6),
+"CCR7"=c(-2000, 1e6),
+"IGD"=c(-3500, 1e6),
+"IGM"=c(-5000, 1e6),
+"TCRVA7_2"=c(-4000, 1e6),
+"CD28"=c(-3000, 1e6),
+"CD16"=c(-4000, 1e6),
+"CD45RA"=c(-4500, 1e6),
+"PD1"=c(-3200, 1e6),
+"TCRVD1_IGA"=c(-3000, 1e6),
+"PE_A"=c(-3000, 1e6),
+"CD24"=c(-11000, 1e6),
+"CD25"=c(-6000, 1e6),
+"CD7"=c(-4500, 1e6),
+"CD161"=c(-3500, 1e6),
+"CD115"=c(-9000, 1e6),
+"HLA_DR"=c(-2500, 1e6),
+"CD11C"=c(-2300, 1e6),
+"CD14"=c(-8000, 1e6),
+"TCRGD"=c(-8500, 1e6),
+"CD8"=c(-2100, 1e6),
+"CD123"=c(-4000, 1e6),
+"CD19"=c(-3500, 1e6),
+"CD11B"=c(-7000, 1e6),
+"CD4"=c(-3000, 1e6))
+
+#Zeroing: manually set the value to 0, if it's under the specified threshold
+for (x in 1:length(fs_compensated)){
+    e <- flowCore::exprs(fs_compensated[[x]])
+    for (i in 1:length(e[, 1])){
+   	 for (j in 1:length(e[1, ])){
+   		 if (!is.null(channel_specifications[names(e[i, j])][[1]])){
+   			 #if it's under the minRange
+   			 if(e[i, j] < channel_specifications[names(e[i, j])][[1]][1]){
+   				 e[i, j] <- 0
+   			 }
+   		 }
+   	 }
+    }
+    flowCore::exprs(fs_compensated[[x]]) <- e
+}
+
+#trimming
+frames_trimmed <- c()
+for (i in 1:length(fs_compensated)){
+	 frames_trimmed <- c(frames_trimmed, RemoveMargins(fs_compensated[[i]], channels, channel_specifications = channel_specifications))
+}
+
+trimmed_fs <- flowSet(frames_trimmed)
+
+#Downsampling if needed
+dsFilt <- sampleFilter(size = 100000, filterId="dsFilter")
+fsApply(trimmed_fs , nrow)
+result <- filter(trimmed_fs, dsFilt)
+capped_fs <- Subset(trimmed_fs, result)
+fsApply(capped_fs , nrow)
+
+#Now capped_fs holds our data, we can use it further or write it as a new batch of fcs files
