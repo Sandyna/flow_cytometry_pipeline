@@ -109,6 +109,32 @@ compensation_matrix_csv <- read.csv(matrix_file)
 compensation_matrix <- as.matrix(compensation_matrix_csv)
 fs_compensated <- compensate(fs, compensation_matrix)
 
+#Alternately, we've used a different compensation matrix for all the samples from the plate #3
+
+plate_3_sample_suffixes <- c("_A10_MSC_and_NPC.fcs", "_A11_TNAP.fcs", "_A12_MUC13.fcs", "_A2_IgLchainK.fcs", "_A3_IgM.fcs", "_A4_A9B1_integrin.fcs", "_A5_Jagged2.fcs", "_A6_Ksp37.fcs", "_A7_LY6G6D.fcs", "_A8_MERTK.fcs", "_A9_MSC.fcs", "_B1_NkP80.fcs", "_B10_CD328.fcs", "_B11_Siglec8.fcs", "_B12_Siglec9.fcs", "_B2_Notch1.fcs", "_B3_Notch3.fcs", "_B4_Notch4.fcs", "_B5_NPC.fcs", "_B6_CD352.fcs", "_B7_PSMA.fcs", "_B8_ROR1.fcs", "_B9_Siglec10.fcs", "_C1_SSEA5.fcs", "_C10_TSLPR.fcs", "_C11_VEGFR3.fcs", "_C12_Mouse_Igg2ak.fcs", "_C2_SUSD2.fcs", "_C3_TCRab.fcs", "_C4_TCRGD.fcs", "_C5_Tim4.fcs", "_C6_TLT2.fcs", "_C7_TM4SF20.fcs", "_C8_TRA249.fcs", "_C9_TRA254.fcs", "_D1_LOX1.fcs", "_D10_CD102.fcs", "_D11_CD104.fcs", "_D12_CD124.fcs", "_D2_CD20.fcs", "_D3_CD52.fcs", "_D4_CD117.fcs", "_D5_CD133.fcs", "_D6_APCDD1.fcs", "_D7_CD272.fcs", "_D8_CD198.fcs", "_D9_CCRL2.fcs", "_E1_CD130.fcs", "_E10_CD199.fcs", "_E11_CD209.fcs", "_E12_CD217.fcs", "_E2_CD144.fcs", "_E3_CD152.fcs", "_E4_CD155.fcs", "_E5_CD158b.fcs", "_E6_TMEM8a.fcs", "_E7_CD186.fcs", "_E8_CD192.fcs", "_E9_CD197.fcs", "_F1_CD230.fcs", "_F10_CD304.fcs", "_F11_CD37e.fcs", "_F12_CD323.fcs", "_F2_CD24.fcs", "_F3_CD243.fcs", "_F4_CD26.fcs", "_F5_CD269.fcs", "_F6_CD282.fcs", "_F7_CD284.fcs", "_F8_CD301.fcs", "_F9_CD303.fcs", "_G1_CD357.fcs", "_G10_CD71.fcs", "_G11_CD84.fcs", "_G12_CD88.fcs", "_G2_CD36.fcs", "_G3_CD369.fcs", "_G4_CD370.fcs", "_G5_CD371.fcs", "_G6_CD45RO.fcs", "_G7_CD51.fcs", "_G8_CD59.fcs", "_G9_CD7.fcs", "_H1_CD355.fcs", "_H10_IL28RA.fcs", "_H11_B5integrin.fcs", "_H12_KLRG1.fcs", "_H2_HER3.fcs", "_H3_FPR3.fcs", "_H4_Ganglioside_GD2.fcs", "_H5_GPR83.fcs", "_H6_HLA_ABC.fcs", "_H7_HLA_DR.fcs", "_H8_IgLchainlambda.fcs", "_H9_IgD.fcs")
+
+matrix_file <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix.csv"
+matrix_file_plate_3 <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix_plate_3.csv"
+compensation_matrix_csv <- read.csv(matrix_file)
+compensation_matrix_3_csv <- read.csv(matrix_file_plate_3 )
+compensation_matrix <- as.matrix(compensation_matrix_csv)
+compensation_matrix_3 <- as.matrix(compensation_matrix_3_csv)
+
+plate_3_samples <- gsub("^", name, plate_3_sample_suffixes)
+
+frames_compensated <- c()
+
+#If the marker is in plate 3, use a different matrix
+for (i in 1:length(fs)){
+	if(identifier(fs[[i]]) %in% plate_3_samples){
+    	frames_compensated <- c(frames_compensated, compensate(fs[[i]], compensation_matrix_3_csv))
+	} else {
+    	frames_compensated <- c(frames_compensated, compensate(fs[[i]], compensation_matrix_csv))
+	}
+}
+
+fs_compensated <- flowSet(frames_compensated)
+
 #Data trimming and "zeroing"
 #Sometimes we want to remove data that exceeds a certain threshold. We can do this by trimming with the PeacoQC package.
 #We use the term "zeroing" to describe the practice of setting the measured value to zero if it's under a certain threshold, to correct measurings that are too low to be valid.
@@ -120,41 +146,15 @@ library(PeacoQC)
 
 #This is an example of how we used it
 #pick channels which we want to target
-channels <- c(8:13, 18, 20, 21, 23:38, 40:44, 46)
-#set thresholds for specific channels/markers
-channel_specifications <- list("TCRVD2_IGG"=c(-6000, 1e6),
-"CD69"=c(-5000, 1e6),
-"CD38"=c(-2000, 1e6),
-"CD127"=c(-4000, 1e6),
-"CD71"=c(-4500, 1e6),
-"CD73"=c(-3000, 1e6),
-"CD56"=c(-3000, 1e6),
-"CCR7"=c(-2000, 1e6),
-"IGD"=c(-3500, 1e6),
-"IGM"=c(-5000, 1e6),
-"TCRVA7_2"=c(-4000, 1e6),
-"CD28"=c(-3000, 1e6),
-"CD16"=c(-4000, 1e6),
-"CD45RA"=c(-4500, 1e6),
-"PD1"=c(-3200, 1e6),
-"TCRVD1_IGA"=c(-3000, 1e6),
-"PE_A"=c(-3000, 1e6),
-"CD24"=c(-11000, 1e6),
-"CD25"=c(-6000, 1e6),
-"CD7"=c(-4500, 1e6),
-"CD161"=c(-3500, 1e6),
-"CD115"=c(-9000, 1e6),
-"HLA_DR"=c(-2500, 1e6),
-"CD11C"=c(-2300, 1e6),
-"CD14"=c(-8000, 1e6),
-"TCRGD"=c(-8500, 1e6),
-"CD8"=c(-2100, 1e6),
-"CD123"=c(-4000, 1e6),
-"CD19"=c(-3500, 1e6),
-"CD11B"=c(-7000, 1e6),
-"CD4"=c(-3000, 1e6))
+channels <- c(7, 22, 27, 28, 38)
+channel_specifications <- list(
+"AF_A"=c(-20000, 1e6),
+"CD3"=c(-9000, 1e6),
+"CD45RA"=c(-8300, 1e6),
+"PD1"=c(-3800, 1e6),
+"CD14"=c(-10000, 1e6))
 
-#Zeroing: manually set the value to 0, if it's under the specified threshold
+#Zeroing: manually set the value to 0, if it's under the specified threshold. We ended up not using this. 
 for (x in 1:length(fs_compensated)){
     e <- flowCore::exprs(fs_compensated[[x]])
     for (i in 1:length(e[, 1])){
@@ -175,8 +175,8 @@ frames_trimmed <- c()
 for (i in 1:length(fs_compensated)){
 	 frames_trimmed <- c(frames_trimmed, RemoveMargins(fs_compensated[[i]], channels, channel_specifications = channel_specifications))
 }
-
 trimmed_fs <- flowSet(frames_trimmed)
+#A new column "Original_ID" is added here
 
 #Downsampling if needed
 dsFilt <- sampleFilter(size = 100000, filterId="dsFilter")
@@ -186,3 +186,6 @@ capped_fs <- Subset(trimmed_fs, result)
 fsApply(capped_fs , nrow)
 
 #Now capped_fs holds our data, we can use it further or write it as a new batch of fcs files
+#Replacing all white space in names with '_' and saving the fcs
+renamed_fcs <- gsub("\\s", "_", fcs)
+write.flowSet(capped_fs, outdir = "trimmed", filename = renamed_fcs)
