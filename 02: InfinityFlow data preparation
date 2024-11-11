@@ -1,0 +1,18 @@
+#For the InfinityFlow we're going to need several things prepared: 
+  #-folder with fcs files - prepared in 01: General data preparation
+  #-annotation table - a table matching the antibody targets and antibody isotypes to each other
+  #-backbone description - you can create it manually or in a trial run of the InfinityFlow and reuse it for further runs
+#Check https://github.com/ebecht/infinityFlow/blob/48701c31c6dd21d8f742a862fe3bc20fae7f0132/vignettes/basic_usage.Rmd
+
+#filling out annotation based on file names - a rough automated way that needs to be checked and corrected
+#You don't need to do this, and it likely won't work as your file names are going to be different. The annotation table can be created by hand or any other way, but it helped us to have a rough base
+data_spec <- c()
+for (id in 1:length(fcs_file_names_prefixes)) {
+	df <- data.frame(
+target = c(gsub("\\s.*", "", gsub(".*_", "", list.files(source_dir , pattern = paste0("^", fcs_file_names_prefixes[id]))))), 
+specificity= c(gsub("\\.fcs", "", gsub(".*\\s", "", list.files(source_dir , pattern = paste0("^", fcs_file_names_prefixes[id]))))))
+rownames(df) <- c(list.files(source_dir , pattern = paste0("^", fcs_file_names_prefixes[id])))
+df
+write.csv(df, paste0(infinity_dir, "/", fcs_file_names_prefixes[id], "/annotation.csv"), row.names=TRUE)
+}
+
