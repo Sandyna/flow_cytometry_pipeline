@@ -19,11 +19,11 @@ library(MetaCyto)
 #We were given fcs files and we're going to sort them into corresponding folders
 
 #Define the directories
-source_dir <- c("C:/Users/sanda/Documents/Bioinformatics/full_data_raw/fcs_files/")
-infinity_dir <- c("C:/Users/sanda/Documents/Bioinformatics/full_data_trimmed_InfinityFlow/fcs_files/")
+source_dir <- c("path/to/original/fcs/files")
+infinity_dir <- c("path/to/new/fcs/files")
 
 #getting a unique list of sample IDs
-fcs_file_names <- list.files(getwd(), pattern = "\\.fcs")
+fcs_file_names <- list.files(source_dir, pattern = "\\.fcs")
 fcs_file_names_prefixes <- c()
 for (line in fcs_file_names) {
 	 fcs_file_names_prefixes <- c(fcs_file_names_prefixes, gsub("_.*", "", line))
@@ -55,15 +55,6 @@ for(name in prefixes){
 for(name in prefixes){
 	setwd(paste0(infinity_dir, name))
 	blanks_to_remove <- list.files(paste0(infinity_dir, name), pattern = ".*Blank.*")
-	print(blanks_to_remove)
-	file.remove(blanks_to_remove)
-}
-
-#Remove well_081 because it's a blank in our case
-for(name in prefixes){
-	setwd(paste0(infinity_dir, name))
-	print(getwd())
-	blanks_to_remove <- list.files(paste0(infinity_dir, name), pattern = ".*G9_Well_081.*")
 	print(blanks_to_remove)
 	file.remove(blanks_to_remove)
 }
@@ -104,7 +95,7 @@ colnames(fs) <- new_colnames
 
 #Applying the compensation matrix
 #put your own matrix file here
-matrix_file <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix.csv"
+matrix_file <- "path/to/matrix/file"
 compensation_matrix_csv <- read.csv(matrix_file)
 compensation_matrix <- as.matrix(compensation_matrix_csv)
 fs_compensated <- compensate(fs, compensation_matrix)
