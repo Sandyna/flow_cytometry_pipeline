@@ -1,0 +1,217 @@
+library(CATALYST)
+library(cowplot)
+library(flowCore)
+library(diffcyt)
+library(scater)
+library(SingleCellExperiment)
+
+#for CATALYST, we need to prepare: 
+#-flowset, made from fcs files
+#-panel
+#-md
+#check CATALYST here: https://bioconductor.org/packages/release/bioc/vignettes/CATALYST/inst/doc/differential.html
+
+#set these yourself. We used csv files for panel and md and converted them to data frame as the CATALYST needs
+dir_fcs <- "path/to/the/fcs/files"
+panel_csv <- read.csv("path/to/panel")
+md_csv <- read.csv("path/to/md")
+
+setwd(dir_fcs)
+
+#rename files to remove spaces
+fcs <- list.files(pattern = ".fcs$")
+file.rename(fcs, gsub("\\s", "_", fcs))
+
+#read fcs files
+fcs <- list.files(pattern = ".fcs$")
+fs <- read.flowSet(fcs, transformation = FALSE, truncate_max_range = FALSE)
+
+#rename columns to remove spaces and dots
+new_colnames <- gsub(" ", "", colnames(fs))
+new_colnames <- gsub("\\.", "_", new_colnames)
+colnames(fs) <- new_colnames
+
+#prepare panel and md from the csv files
+panel <- data.frame(fcs_colname = panel_csv$fcs_colname, antigen = panel_csv$antigen, marker_class = panel_csv$marker_class)
+md <- data.frame(file_name = md_csv$file_name, sample_id = md_csv$sample_id, condition = md_csv$condition, patient_id = md_csv$patient_id)
+
+#prepare sce, clustering
+sce <- prepData(fs, panel, md)
+
+sce <- cluster(sce, features = "type",
+xdim = 10, ydim = 10, maxK = 20,
+verbose = FALSE, seed = 1)
+
+#run analysis - we pick our optimal cluster number according to this
+delta_area(sce)
+
+#set your cluster number here, for example this is a clustering with 13 clusters
+cluster_nr <- "meta13"
+#for some functions, you can also use the initial clustering with 100 clusters instead of the meta-clustering.
+cluster_nr_all <- "som100"
+
+#further analysis, check the CATALYST vignette to see what all can be done with it
+plotCounts(sce,
+group_by = "sample_id",
+color_by = "condition")
+
+clrDR(sce, by = "sample_id", k = cluster_nr)
+clrDR(sce, by = "sample_id", k = cluster_nr_all)
+
+pbMDS(sce, by = "both", k = cluster_nr,
+shape_by = "condition", size_by = TRUE)
+
+plotAbundances(sce, k = cluster_nr, by = "cluster_id", group_by = "sample_id")
+
+design <- createDesignMatrix(ei(sce), cols_design = "condition")
+contrast <- createContrast(c(0, 1))
+
+res_DA_meta <- diffcyt(sce, clustering_to_use = cluster_nr,
+              	analysis_type = "DA", method_DA = "diffcyt-DA-edgeR",
+              	design = design, contrast = contrast, verbose = FALSE)
+
+tbl_DA <- rowData(res_DA_meta$res)
+plotDiffHeatmap(sce, tbl_DA, all = TRUE, fdr = 0.05)
+#Manually saved the picture here
+
+res_DA_meta <- diffcyt(sce, clustering_to_use = cluster_nr,
+analysis_type = "DA", method_DA = "diffcyt-DA-voom",
+design = design, contrast = contrast, verbose = FALSE)
+
+tbl_DA <- rowData(res_DA_meta$res)
+plotDiffHeatmap(sce, tbl_DA, all = TRUE, fdr = 0.05)
+#Manually saved the picture here
+
+res_DA <- diffcyt(sce, clustering_to_use = cluster_nr_all,
+analysis_type = "DA", method_DA = "diffcyt-DA-edgeR",
+design = design, contrast = contrast, verbose = FALSE)
+
+tbl_DA <- rowData(res_DA$res)
+plotDiffHeatmap(sce, tbl_DA, all = TRUE, fdr = 0.05)
+
+res_DA <- diffcyt(sce, clustering_to_use = cluster_nr_all,
+analysis_type = "DA", method_DA = "diffcyt-DA-voom",
+design = design, contrast = contrast, verbose = FALSE)
+
+tbl_DA <- rowData(res_DA$res)
+plotDiffHeatmap(sce, tbl_DA, all = TRUE, fdr = 0.05)
+
+#cell numbers per cluster for each sample ID
+plotCounts(sce,
+group_by = "cluster_id",
+color_by = "sample_id")
+
+df <- data.frame(sce[["cluster_id"]], row.names = NULL, check.names = FALSE)
+df[["sample_id"]] <- sce[["sample_id"]]
+y <- table(df)
+dfy <- as.data.frame(y)
+write.csv(dfy, "./cells_per_cluster.csv")
+
+#Which cluster is in which meta cluster, for 13 meta clusters
+sce@metadata$cluster_codes$meta13
+
+#cells above threshold
+
+#get a list of relevant markers (only .XGBOOST - the ones produced by InfinityFlow, no LD, size, etc.)
+fcs <- list.files(pattern = ".fcs")
+fs <- read.flowSet(fcs, transformation = FALSE, truncate_max_range = FALSE)
+file_1 <-fs[[1]]
+markers_raw <- colnames(file_1)
+markers <- markers_raw[grep(".XGBOOST", markers_raw)]
+marker_ids <- grep(".XGBOOST", markers_raw)
+
+df <- data.frame(markers = markers)
+
+#Specify your file with thresholds. It should have columns "isotype" and "upper threshold" (or lower, but you need to change the code to utilise it for those, as we were focusing on the upper thresholds)
+thresholds <- read.csv("path/to/thresholds/file.csv")
+
+for(f in fcs){
+	current_file <- read.FCS(f)
+	for(t in 1:length(thresholds[, 1])){
+		print(paste0("Working on threshold ", t, ": ", thresholds$isotype[t]))
+		over_threshold_all <- c()
+		for(i in 1:length(marker_ids)){
+			over_threshold_all <- c(over_threshold_all, sum(current_file[, marker_ids[i]]@exprs > thresholds$threshold.upper[t]))
+		}
+		print(head(over_threshold_all))
+		df[thresholds$isotype[t]] <- over_threshold_all
+	}
+	write.csv(df, paste0(getwd(), "/", f, "_output.csv"), row.names = TRUE)
+}
+
+#rename the output to remove .fcs from it
+csv <- list.files(pattern = ".csv")
+file.rename(csv, gsub(".fcs", "", csv))
+
+#cells above threshold - editing
+csv <- list.files(pattern = ".csv")
+
+new_columns_file <- read.csv("../../marker_target_isotype_table.csv")
+
+target <- new_columns_file$target
+isotype <- new_columns_file$Isotype
+
+csv_list <- list.files(getwd(), pattern = ".csv")
+
+for(file in csv_list) {
+	print(paste0("Working on: ", file))
+    csv <- read.csv(file)
+    csv <- csv[order(csv$markers), ]
+    csv$target <- target
+    csv$Isotype <- isotype
+    colnames(csv) <- c("X", "markers", "Mouse_IgG2b_K", "Mouse_IgG2a_K", "Mouse_IgG1_K", "Mouse_IgG3_K", "Mouse_IgM_K", "Armenian_Hamster_IgG", "target", "Isotype")
+    new_values <- c()
+	new_values_raw <- c()
+	isotype_values <- c()
+    for(i in 1:length(csv$Isotype)){
+        iso <- csv[i, "Isotype"]
+		new_value <- 0
+		#print(paste0("Working on ", csv[i, "markers"], " with chosen isotype of: ", iso))
+		#all unknown isotypes eg. rat should be treated as Mouse_IgG2a_K
+        if(!(iso %in% colnames(csv))){
+		iso <- "Mouse_IgG2a_K"}
+		new_value <- csv[i, iso]
+		new_values_raw <- append(new_values_raw, csv[i, iso])
+		isotype_values <- append(isotype_values, csv[match(iso, csv[, 'target']), iso])
+		#if it's not the isotype, substract the corresponding isotype from it
+		if(csv[i, "Isotype"] != csv[i, "target"]){
+			#print(paste0(new_value, "-", csv[match(iso, csv[, 'target']), iso], "=", new_value-csv[match(iso, csv[, 'target']), iso]))
+			new_value <- new_value-csv[match(iso, csv[, 'target']), iso]
+		}
+		if(new_value < 0){
+			new_values <- append(new_values, 0)
+		} else {
+			new_values <- append(new_values, new_value)
+		}
+    }
+    new_csv <- data.frame(X = csv$X, markers = csv$markers, target = csv$target, isotype = csv$Isotype, event_count_original = new_values_raw, isotype_value = isotype_values, event_count_sub_isotype = new_values)
+    write.csv(new_csv, paste0("edited_", file), row.names = FALSE)
+}
+
+#mean of pe signal per marker
+
+fcs <- list.files(pattern = ".fcs")
+
+target_isotype_table <- read.csv("../../marker_target_isotype_table.csv")
+target <- toupper(target_isotype_table$target)
+isotype <- target_isotype_table$Isotype
+
+
+for(f in fcs){
+	current_file <- read.FCS(f)
+	print(paste0("working on file: ", f))
+	markers_raw <- colnames(current_file)
+	markers <- markers_raw[grep(".XGBOOST", markers_raw)]
+	marker_ids <- grep(".XGBOOST", markers_raw)
+	means <- c()
+	isotype_pe <- c()
+	for(col in 1:length(marker_ids)){
+		means <- c(means, mean(current_file[, col]@exprs))
+		current_marker <- gsub(".XGBOOST", "", colnames(current_file[, col]))
+		print(paste0("Current marker: ", current_marker))
+		print(target_isotype_table[match(current_marker, target), "Isotype"])
+		isotype_pe <-c(isotype_pe, current_file[, col]@exprs)
+	}
+	df <- data.frame(markers = markers, mean = means)
+	#write.csv(df, gsub(".fcs", "", paste0(getwd(), "/means_", f, ".csv")), row.names = TRUE)
+}
