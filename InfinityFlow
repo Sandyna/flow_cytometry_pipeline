@@ -1,0 +1,51 @@
+library(CATALYST)
+library(cowplot)
+library(flowCore)
+library(diffcyt)
+library(scater)
+library(SingleCellExperiment)
+library(PeacoQC)
+library(infinityFlow)
+
+#Check InfinityFlow here: https://github.com/ebecht/infinityFlow/blob/48701c31c6dd21d8f742a862fe3bc20fae7f0132/Readme.md
+#put a list of your samples here
+sample_names <- c("sample1", "sample2")
+#this for loop will do infinityFlow for each of your samples
+for (name in sample_names){
+print(paste0("Working on sample: ", name))
+
+#replace all of these with your own files
+annotation_file = read.csv("path/to/annotation/csv/file"), row.names = 1, stringsAsFactors = FALSE)
+path_to_output <- "path/to/output/folder"
+path_to_fcs <- file.path("path/to/fcs/files")
+#create your own according to the infinityFlow vignette
+backbone_selection_file <- file.path("path/to/backbone/selection/file")
+path_to_intermediary_results <- file.path("path/to/intermediary/results/, "tmp")
+
+
+backbone_specification <- read.csv(backbone_selection_file)
+targets <- annotation_file$Infinity_target
+names(targets) <- rownames(annotation_file)
+isotypes <- annotation_file$Infinity_isotype
+names(isotypes) <- rownames(annotation_file)
+
+#specify your own amount of cores available for the task and the desired downsampling
+input_events_downsampling <- 1e6
+prediction_events_downsampling <- 1e6
+cores = 6L
+
+#and go!
+imputed_data <- infinityFlow::infinity_flow(
+    path_to_fcs = path_to_fcs,
+    path_to_output = path_to_output,
+    path_to_intermediary_results = path_to_intermediary_results,
+    backbone_selection_file = backbone_selection_file,
+    annotation = targets,
+    isotype = isotypes,
+    verbose = TRUE,
+    input_events_downsampling = input_events_downsampling,
+    prediction_events_downsampling = prediction_events_downsampling,
+    cores = cores
+)
+
+}
