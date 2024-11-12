@@ -7,7 +7,7 @@ library(SingleCellExperiment)
 library(PeacoQC)
 library(infinityFlow)
 
-#Check InfinityFlow here: https://github.com/ebecht/infinityFlow/blob/48701c31c6dd21d8f742a862fe3bc20fae7f0132/Readme.md
+#Check InfinityFlow here: https://github.com/ebecht/infinityFlow/
 #put a list of your samples here
 sample_names <- c("sample1", "sample2")
 #this for loop will do infinityFlow for each of your samples
