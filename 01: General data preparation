@@ -1,3 +1,7 @@
+#Define the directories
+source_dir <- c("path/to/original/fcs/files")
+infinity_dir <- c("path/to/new/fcs/files")
+
 #install and invoke dark magic
 if (!require("BiocManager", quietly = TRUE))
 	install.packages("BiocManager")
@@ -14,13 +18,8 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("MetaCyto")
 library(MetaCyto)
 
-
 #This only needs to be done once
 #We were given fcs files and we're going to sort them into corresponding folders
-
-#Define the directories
-source_dir <- c("path/to/original/fcs/files")
-infinity_dir <- c("path/to/new/fcs/files")
 
 #getting a unique list of sample IDs
 fcs_file_names <- list.files(source_dir, pattern = "\\.fcs")
@@ -102,7 +101,8 @@ fs_compensated <- compensate(fs, compensation_matrix)
 
 #Alternately, we've used a different compensation matrix for all the samples from the plate #3
 
-plate_3_sample_suffixes <- c("_A10_MSC_and_NPC.fcs", "_A11_TNAP.fcs", "_A12_MUC13.fcs", "_A2_IgLchainK.fcs", "_A3_IgM.fcs", "_A4_A9B1_integrin.fcs", "_A5_Jagged2.fcs", "_A6_Ksp37.fcs", "_A7_LY6G6D.fcs", "_A8_MERTK.fcs", "_A9_MSC.fcs", "_B1_NkP80.fcs", "_B10_CD328.fcs", "_B11_Siglec8.fcs", "_B12_Siglec9.fcs", "_B2_Notch1.fcs", "_B3_Notch3.fcs", "_B4_Notch4.fcs", "_B5_NPC.fcs", "_B6_CD352.fcs", "_B7_PSMA.fcs", "_B8_ROR1.fcs", "_B9_Siglec10.fcs", "_C1_SSEA5.fcs", "_C10_TSLPR.fcs", "_C11_VEGFR3.fcs", "_C12_Mouse_Igg2ak.fcs", "_C2_SUSD2.fcs", "_C3_TCRab.fcs", "_C4_TCRGD.fcs", "_C5_Tim4.fcs", "_C6_TLT2.fcs", "_C7_TM4SF20.fcs", "_C8_TRA249.fcs", "_C9_TRA254.fcs", "_D1_LOX1.fcs", "_D10_CD102.fcs", "_D11_CD104.fcs", "_D12_CD124.fcs", "_D2_CD20.fcs", "_D3_CD52.fcs", "_D4_CD117.fcs", "_D5_CD133.fcs", "_D6_APCDD1.fcs", "_D7_CD272.fcs", "_D8_CD198.fcs", "_D9_CCRL2.fcs", "_E1_CD130.fcs", "_E10_CD199.fcs", "_E11_CD209.fcs", "_E12_CD217.fcs", "_E2_CD144.fcs", "_E3_CD152.fcs", "_E4_CD155.fcs", "_E5_CD158b.fcs", "_E6_TMEM8a.fcs", "_E7_CD186.fcs", "_E8_CD192.fcs", "_E9_CD197.fcs", "_F1_CD230.fcs", "_F10_CD304.fcs", "_F11_CD37e.fcs", "_F12_CD323.fcs", "_F2_CD24.fcs", "_F3_CD243.fcs", "_F4_CD26.fcs", "_F5_CD269.fcs", "_F6_CD282.fcs", "_F7_CD284.fcs", "_F8_CD301.fcs", "_F9_CD303.fcs", "_G1_CD357.fcs", "_G10_CD71.fcs", "_G11_CD84.fcs", "_G12_CD88.fcs", "_G2_CD36.fcs", "_G3_CD369.fcs", "_G4_CD370.fcs", "_G5_CD371.fcs", "_G6_CD45RO.fcs", "_G7_CD51.fcs", "_G8_CD59.fcs", "_G9_CD7.fcs", "_H1_CD355.fcs", "_H10_IL28RA.fcs", "_H11_B5integrin.fcs", "_H12_KLRG1.fcs", "_H2_HER3.fcs", "_H3_FPR3.fcs", "_H4_Ganglioside_GD2.fcs", "_H5_GPR83.fcs", "_H6_HLA_ABC.fcs", "_H7_HLA_DR.fcs", "_H8_IgLchainlambda.fcs", "_H9_IgD.fcs")
+#define the names/suffixes of the alternate plate here: 
+plate_3_sample_suffixes <- c("suffix_1.fcs", "suffix_2.fcs", "suffix_3.fcs")
 
 matrix_file <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix.csv"
 matrix_file_plate_3 <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix_plate_3.csv"
