@@ -2,7 +2,6 @@
 source_dir <- c("path/to/original/fcs/files")
 infinity_dir <- c("path/to/new/fcs/files")
 
-#install and invoke dark magic
 if (!require("BiocManager", quietly = TRUE))
 	install.packages("BiocManager")
 BiocManager::install("CATALYST")
@@ -82,7 +81,6 @@ print("writing now")
 write.FCS(new_frame, gsub("\\s", "", paste(prefix, "_pooled.fcs")))
 }
 
-
 #Reading in fcs files and creating a flow set to work with
 setwd(infinity_dir)
 fcs <- list.files(pattern = ".fcs$")
@@ -94,7 +92,9 @@ colnames(fs) <- new_colnames
 
 #Applying the compensation matrix
 #put your own matrix file here
-matrix_file <- "path/to/matrix/file"
+matrix_file <- "path/to/compensation_matrix.csv"
+matrix_file_plate_3 <- "path/to/plate3/compensation_matrix_plate_3.csv"
+
 compensation_matrix_csv <- read.csv(matrix_file)
 compensation_matrix <- as.matrix(compensation_matrix_csv)
 fs_compensated <- compensate(fs, compensation_matrix)
@@ -104,8 +104,6 @@ fs_compensated <- compensate(fs, compensation_matrix)
 #define the names/suffixes of the alternate plate here: 
 plate_3_sample_suffixes <- c("suffix_1.fcs", "suffix_2.fcs", "suffix_3.fcs")
 
-matrix_file <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix.csv"
-matrix_file_plate_3 <- "C:/Users/sanda/Documents/Bioinformatics/full_data_raw/compensation_matrix_plate_3.csv"
 compensation_matrix_csv <- read.csv(matrix_file)
 compensation_matrix_3_csv <- read.csv(matrix_file_plate_3 )
 compensation_matrix <- as.matrix(compensation_matrix_csv)
